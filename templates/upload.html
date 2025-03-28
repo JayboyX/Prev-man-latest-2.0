@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Upload and Data Extraction</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <div class="w-64 bg-gray-800 text-white p-6 shadow-lg">
+      <h1 class="text-2xl font-bold mb-6">Prev-Man Rail</h1>
+      <ul class="space-y-4">
+        <!-- Wear Analytics Link -->
+        <li>
+            <a href="/analytics_dashboard" id="wear-link" class="block text-gray-300 hover:text-teal-400 transition-all duration-300 ease-in-out relative">
+                <span class="link-text">Wear</span>
+                <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-400 transition-all duration-300 ease-in-out"></span>
+            </a>
+        </li>
+        <li>
+            <a href="/ohte_dashboard" id="ohte-link" class="block text-gray-300 hover:text-teal-400 transition-all duration-300 ease-in-out relative">
+                <span class="link-text">OHTE</span>
+                <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-400 transition-all duration-300 ease-in-out"></span>
+            </a>
+        </li>
+        <li>
+            <a href="/geometry_dashboard" id="geometry-link" class="block text-gray-300 hover:text-teal-400 transition-all duration-300 ease-in-out relative">
+                <span class="link-text">Geometry</span>
+                <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-400 transition-all duration-300 ease-in-out"></span>
+            </a>
+        </li>
+        <li>
+            <a href="/clearance_dashboard" id="clearance-link" class="block text-gray-300 hover:text-teal-400 transition-all duration-300 ease-in-out relative">
+                <span class="link-text">Clearance</span>
+                <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-400 transition-all duration-300 ease-in-out"></span>
+            </a>
+        </li>
+        <li>
+            <a href="/ballast_dashboard" id="ballast-link" class="block text-gray-300 hover:text-teal-400 transition-all duration-300 ease-in-out relative">
+                <span class="link-text">Ballast</span>
+                <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-400 transition-all duration-300 ease-in-out"></span>
+            </a>
+        </li>
+        <!-- Simulation UI Link -->
+        <li>
+          <a href="/" id="simulation-link" class="block text-gray-300 hover:text-teal-400 transition-all duration-300 ease-in-out relative">
+            <span class="link-text">Simulation UI</span>
+            <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-400 transition-all duration-300 ease-in-out"></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 p-6 overflow-y-auto">
+      <!-- Image Upload Section -->
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold mb-4">Upload Graph Image</h2>
+        <div class="bg-white p-6 rounded-lg shadow">
+          <input type="file" id="image-upload" accept="image/*" class="mb-4">
+          <button id="upload-button" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Upload</button>
+        </div>
+      </div>
+
+      <!-- Extracted Data Section -->
+      <div id="data-section" class="hidden">
+        <h2 class="text-2xl font-bold mb-4">Extracted Data</h2>
+        <div class="bg-white p-6 rounded-lg shadow">
+          <div id="data-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Function to handle image upload and data extraction
+    document.getElementById('upload-button').addEventListener('click', () => {
+      const fileInput = document.getElementById('image-upload');
+      const file = fileInput.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const img = new Image();
+          img.src = event.target.result;
+
+          img.onload = function() {
+            // Placeholder for image processing and data extraction logic
+            // This is where you would analyze the image and extract data points
+
+            // For demonstration, we'll simulate extracted data
+            const extractedData = [
+              { location: 'Park City to Checkpoint 1', wear_depth: 2.01 },
+              { location: 'Checkpoint 1 to Checkpoint 2', wear_depth: 2.10 },
+              { location: 'Checkpoint 2 to Checkpoint 3', wear_depth: 1.79 },
+              { location: 'Checkpoint 3 to Checkpoint 4', wear_depth: 1.94 },
+              { location: 'Checkpoint 4 to Park City', wear_depth: 1.89 }
+            ];
+
+            // Display extracted data
+            const dataContent = document.getElementById('data-content');
+            dataContent.innerHTML = `
+              <ul class="mt-4">
+                ${extractedData.map(entry => `
+                  <li class="mb-2">
+                    <strong>Location:</strong> ${entry.location}<br>
+                    <strong>Wear Depth:</strong> ${entry.wear_depth} mm
+                  </li>
+                `).join('')}
+              </ul>
+            `;
+
+            // Show data section
+            document.getElementById('data-section').classList.remove('hidden');
+          };
+        };
+        reader.readAsDataURL(file);
+      } else {
+        alert('Please select an image file.');
+      }
+    });
+
+    // Highlight active sidebar link
+    const currentPath = window.location.pathname;
+    const wearLink = document.getElementById('wear-link');
+    const simulationLink = document.getElementById('simulation-link');
+
+    if (currentPath === '/analytics_dashboard') {
+      wearLink.classList.add('active');
+      simulationLink.classList.remove('active');
+    } else if (currentPath === '/') {
+      simulationLink.classList.add('active');
+      wearLink.classList.remove('active');
+    }
+  </script>
+
+  <style>
+    /* Highlight animation for active link */
+    .active .link-text {
+      color: #1abc9c; /* Green-400 */
+    }
+    .active span {
+      width: 100%;
+    }
+  </style>
+</body>
+</html>
