@@ -1,418 +1,370 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 import sqlite3
-from datetime import datetime, timedelta
-import random
-import cv2
-import numpy as np
-import base64
-import io
-from PIL import Image
+from datetime import datetime
+import math
 
 app = Flask(__name__)
 
-# Connect to SQLite database
+DATABASE = 'railway.db'
+
 def get_db_connection():
-    conn = sqlite3.connect('rail_simulation.db')
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
-# Initialize the database with required tables
-def init_db():
-    print("Initializing database...")
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Create simulations table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS simulations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            simulation_date TEXT NOT NULL,
-            start_point TEXT NOT NULL,
-            end_point TEXT NOT NULL,
-            train_id TEXT NOT NULL,
-            speed_gain REAL NOT NULL,
-            weight_gain REAL NOT NULL,
-            frequency_gain REAL NOT NULL,
-            total_distance REAL NOT NULL,
-            train_speed REAL NOT NULL,
-            time_taken REAL NOT NULL
-        )
-    ''')
-
-    # Create wear_outputs table with distance_km
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS wear_outputs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            simulation_id INTEGER NOT NULL,
-            timestamp TEXT NOT NULL,
-            location TEXT NOT NULL,
-            distance_km REAL NOT NULL,
-            wear_depth REAL NOT NULL,
-            crw_l REAL NOT NULL,
-            crw_r REAL NOT NULL,
-            side_l REAL NOT NULL,
-            side_r REAL NOT NULL,
-            remlife_l REAL NOT NULL,
-            remlife_r REAL NOT NULL,
-            wid_l REAL NOT NULL,
-            wid_r REAL NOT NULL,
-            tiltdiff_l REAL NOT NULL,
-            tiltdiff_r REAL NOT NULL,
-            type_l REAL NOT NULL,
-            type_r REAL NOT NULL,
-            gaugediff REAL NOT NULL,
-            FOREIGN KEY (simulation_id) REFERENCES simulations (id)
-        )
-    ''')
-
-    # Create trains table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS trains (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            train_id TEXT NOT NULL UNIQUE,
-            base_speed REAL NOT NULL,
-            weight_per_car REAL NOT NULL,
-            cars INTEGER NOT NULL,
-            base_frequency INTEGER NOT NULL
-        )
-    ''')
-
-    # Insert initial train details
-    trains = [
-        ("Train A", 160, 20, 6, 10),
-        ("Train B", 100, 30, 8, 6),
-        ("Train C", 60, 40, 12, 4)
-    ]
-
-    for train in trains:
-        cursor.execute('''
-            INSERT OR IGNORE INTO trains (train_id, base_speed, weight_per_car, cars, base_frequency)
-            VALUES (?, ?, ?, ?, ?)
-        ''', train)
-
-    conn.commit()
-    conn.close()
-    print("Database initialized successfully.")
-
-# Initialize the database when the app starts
-init_db()
-
-# Define checkpoints and distances (in km)
-checkpoints = ["Park City", "Checkpoint 1", "Checkpoint 2", "Checkpoint 3", "Checkpoint 4"]
-distances = {
-    ("Park City", "Checkpoint 1"): 20,
-    ("Checkpoint 1", "Checkpoint 2"): 45,
-    ("Checkpoint 2", "Checkpoint 3"): 60,
-    ("Checkpoint 3", "Checkpoint 4"): 35,
-    ("Checkpoint 4", "Park City"): 20,
-}
-
-# Route for the main simulation UI
 @app.route('/')
 def index():
-    return render_template('simulation_ui.html', checkpoints=checkpoints)
+    return redirect(url_for('simulation'))
 
-
-
-# Route to get checkpoint distances
-@app.route('/get_checkpoint_distances')
-def get_checkpoint_distances():
-    try:
-        # Calculate distances from Park City to each checkpoint
-        distances_from_start = []
-        current_distance = 0
-        current_point = "Park City"
-        
-        distances_from_start.append({
-            "name": current_point,
-            "distance_from_start": current_distance
-        })
-        
-        while True:
-            next_point = get_next_checkpoint(current_point, None)  # Get next in sequence
-            segment_distance = distances[(current_point, next_point)]
-            current_distance += segment_distance
-            distances_from_start.append({
-                "name": next_point,
-                "distance_from_start": current_distance
-            })
-            current_point = next_point
-            if current_point == "Park City":
-                break
-        
-        return jsonify(distances_from_start)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Route to save simulation parameters and run the simulation
-@app.route('/run_simulation', methods=['POST'])
-def run_simulation():
-    try:
-        # Parse input data from the request
-        data = request.json
-        print("Received data:", data)
-
-        simulation_date = data['simulation_date']
-        start_point = data['start_point']
-        end_point = data['end_point']
-        train_id = data['train_id']
-        speed_gain = float(data['speed_gain'])
-        weight_gain = float(data['weight_gain'])
-        frequency_gain = float(data['frequency_gain'])
-
-        # Fetch train details from the database
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM trains WHERE train_id = ?', (train_id,))
-        train_details = cursor.fetchone()
-
-        if not train_details:
-            conn.close()
-            return jsonify({"error": f"Train {train_id} not found"}), 404
-
-        # Extract train details
-        base_speed = train_details['base_speed']
-        weight_per_car = train_details['weight_per_car']
-        cars = train_details['cars']
-        base_frequency = train_details['base_frequency']
-
-        # Calculate total weight of the train
-        total_weight = cars * weight_per_car
-
-        # Calculate the total distance and measurement points
-        total_distance, measurement_points = calculate_distance(start_point, end_point)
-        print(f"Total distance: {total_distance} km")
-        print(f"Measurement points: {measurement_points}")
-
-        # Calculate adjusted speed and time taken
-        train_speed = base_speed * speed_gain
-        time_taken = (total_distance / train_speed) * 3600
-
-        # Save simulation parameters to the database
-        cursor.execute('''
-            INSERT INTO simulations (
-                simulation_date, start_point, end_point, train_id, 
-                speed_gain, weight_gain, frequency_gain, 
-                total_distance, train_speed, time_taken
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            simulation_date, start_point, end_point, train_id,
-            speed_gain, weight_gain, frequency_gain,
-            total_distance, train_speed, time_taken
-        ))
-        simulation_id = cursor.lastrowid
-
-        # Simulate wear outputs for each measurement point
-        current_time = datetime.now()
-        wear_outputs = []
-        
-        for i, distance in enumerate(measurement_points):
-            # Calculate timestamp for this point
-            time_to_point = (distance / train_speed) * 3600 if i > 0 else 0
-            timestamp = current_time + timedelta(seconds=time_to_point)
-
-            # Determine location description
-            if i == 0:
-                location = f"Start at {start_point}"
-            elif i == len(measurement_points) - 1:
-                location = f"End at {end_point}"
-            else:
-                location = f"Point {i} between {start_point} and {end_point}"
-
-            # Simulate wear and rail measurements
-            wear_depth, rail_measurements = simulate_wear(
-                train_id, speed_gain, weight_gain, frequency_gain
-            )
-
-            # Insert wear data into the database
-            cursor.execute('''
-                INSERT INTO wear_outputs (
-                    simulation_id, timestamp, location, distance_km, wear_depth,
-                    crw_l, crw_r, side_l, side_r, remlife_l, remlife_r,
-                    wid_l, wid_r, tiltdiff_l, tiltdiff_r, type_l, type_r, gaugediff
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                simulation_id, timestamp.isoformat(), location, distance, wear_depth,
-                rail_measurements['crw_l'], rail_measurements['crw_r'],
-                rail_measurements['side_l'], rail_measurements['side_r'],
-                rail_measurements['remlife_l'], rail_measurements['remlife_r'],
-                rail_measurements['wid_l'], rail_measurements['wid_r'],
-                rail_measurements['tiltdiff_l'], rail_measurements['tiltdiff_r'],
-                rail_measurements['type_l'], rail_measurements['type_r'],
-                rail_measurements['gaugediff']
-            ))
-
-        conn.commit()
-        conn.close()
-
-        return jsonify({
-            "message": "Simulation completed successfully!",
-            "simulation_id": simulation_id,
-            "total_distance": total_distance,
-            "measurement_points": measurement_points,
-            "start_point": start_point,
-            "end_point": end_point
-        })
-    except Exception as e:
-        print("Error:", str(e))
-        return jsonify({"error": str(e)}), 500
-
-# Function to calculate the total distance and measurement points
-def calculate_distance(start_point, end_point):
-    distance = 0
-    current_location = start_point
-    measurement_points = [0.0]  # Start with 0 km
-    
-    while current_location != end_point:
-        next_location = get_next_checkpoint(current_location, end_point)
-        segment_distance = distances[(current_location, next_location)]
-        distance += segment_distance
-        
-        # Calculate intermediate points (25%, 50%, 75% of total distance)
-        for i in range(1, 4):
-            measurement_points.append(round(distance * (i/4), 1))
-        
-        current_location = next_location
-    
-    # Ensure we have exactly 5 points (0%, 25%, 50%, 75%, 100%)
-    measurement_points = measurement_points[:5]  # Take first 5 points
-    measurement_points[-1] = round(distance, 1)  # Ensure last point is exact distance
-    
-    return distance, measurement_points
-# Function to get the next checkpoint
-def get_next_checkpoint(current_location, end_point):
-    current_index = checkpoints.index(current_location)
-    next_index = (current_index + 1) % len(checkpoints)
-    next_location = checkpoints[next_index]
-    
-    # If we have an end point, make sure we're moving toward it
-    if end_point:
-        end_index = checkpoints.index(end_point)
-        if current_index < end_index or (current_index == len(checkpoints)-1 and end_index == 0):
-            # Normal forward progression
-            return next_location
-        else:
-            # Need to wrap around
-            return checkpoints[0]
-    
-    return next_location
-
-# Function to simulate wear and rail measurements
-def simulate_wear(train_id, speed_gain, weight_gain, frequency_gain):
-    # Fetch train details
+@app.route('/simulation')
+def simulation():
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM trains WHERE train_id = ?', (train_id,))
-    train_details = cursor.fetchone()
+    
+    # Get trains for dropdown
+    trains = conn.execute('SELECT * FROM trains').fetchall()
+    
+    # Get recent simulations
+    recent_simulations = conn.execute('''
+        SELECT s.id, s.created_at, t.name as train_name, r.name as route_name, 
+               s.distance, s.status, s.start_station_id, s.end_station_id
+        FROM simulations s
+        JOIN trains t ON s.train_id = t.id
+        JOIN routes r ON s.route_id = r.id
+        ORDER BY s.created_at DESC
+        LIMIT 10
+    ''').fetchall()
+    
     conn.close()
-
-    if not train_details:
-        raise ValueError(f"Train {train_id} not found")
-
-    # Extract train details
-    base_speed = train_details['base_speed']
-    weight_per_car = train_details['weight_per_car']
-    cars = train_details['cars']
-    base_frequency = train_details['base_frequency']
-
-    # Calculate total weight
-    total_weight = cars * weight_per_car
-
-    # Calculate base wear
-    base_wear = (total_weight / 100) * (base_speed / 100) * (base_frequency / 10)
-    wear_depth = base_wear * speed_gain * weight_gain * frequency_gain
-    wear_depth *= random.uniform(0.9, 1.1)  # +/- 10% variability
-
-    # Simulate rail measurements
-    rail_measurements = {
-        'crw_l': random.uniform(1.0, 2.0) * (total_weight / 100),
-        'crw_r': random.uniform(1.0, 2.0) * (total_weight / 100),
-        'side_l': random.uniform(0.5, 1.5) * (total_weight / 100),
-        'side_r': random.uniform(0.5, 1.5) * (total_weight / 100),
-        'remlife_l': random.uniform(100.0, 200.0) / (total_weight / 100),
-        'remlife_r': random.uniform(100.0, 200.0) / (total_weight / 100),
-        'wid_l': random.uniform(50.0, 60.0),
-        'wid_r': random.uniform(50.0, 60.0),
-        'tiltdiff_l': random.uniform(0.1, 0.5) * (base_speed / 100),
-        'tiltdiff_r': random.uniform(0.1, 0.5) * (base_speed / 100),
-        'type_l': random.uniform(40.0, 60.0),
-        'type_r': random.uniform(40.0, 60.0),
-        'gaugediff': random.uniform(0.0, 1.0) * (total_weight / 100)
-    }
-
-    return wear_depth, rail_measurements
-
-# Route to fetch simulation data for visualization
-@app.route('/get_simulations')
-def get_simulations():
-    conn = get_db_connection()
-    cursor = conn.cursor()
     
-    # Get list of all simulations
-    cursor.execute('''
-        SELECT id, simulation_date, start_point, end_point, train_id, 
-               speed_gain, weight_gain, frequency_gain, total_distance
-        FROM simulations
-        ORDER BY simulation_date DESC
-    ''')
-    simulations = cursor.fetchall()
+    return render_template('simulation.html', 
+                         trains=trains,
+                         recent_simulations=recent_simulations)
+
+@app.route('/get_route_data/<int:train_id>')
+def get_route_data(train_id):
+    conn = get_db_connection()
+    
+    # Get the train's default route
+    train = conn.execute('SELECT * FROM trains WHERE id = ?', (train_id,)).fetchone()
+    
+    if not train or not train['route_id']:
+        conn.close()
+        return jsonify({'error': 'No route assigned to this train'}), 404
+    
+    # Get route details
+    route = conn.execute('SELECT * FROM routes WHERE id = ?', (train['route_id'],)).fetchone()
+    
+    # Get stations for this route
+    stations = conn.execute('''
+        SELECT * FROM stations 
+        WHERE route_id = ? 
+        ORDER BY km_marker
+    ''', (train['route_id'],)).fetchall()
+    
+    # Get initial rail conditions for the first station
+    start_conditions = conn.execute('''
+        SELECT * FROM rail_conditions 
+        WHERE route_id = ? 
+        ORDER BY ABS(km_marker - ?)
+        LIMIT 1
+    ''', (train['route_id'], stations[0]['km_marker'])).fetchone()
+    
     conn.close()
     
     return jsonify({
-        'simulations': [dict(sim) for sim in simulations]
+        'route': dict(route),
+        'stations': [dict(s) for s in stations],
+        'initial_conditions': dict(start_conditions) if start_conditions else None,
+        'train': dict(train)
     })
 
-@app.route('/fetch_data')
-def fetch_data():
-    simulation_id = request.args.get('simulation_id')
-    if not simulation_id:
-        return jsonify({'error': 'Missing simulation_id parameter'}), 400
+@app.route('/get_rail_conditions/<int:route_id>/<float:km_marker>')
+def get_rail_conditions(route_id, km_marker):
+    conn = get_db_connection()
+    
+    conditions = conn.execute('''
+        SELECT * FROM rail_conditions 
+        WHERE route_id = ? 
+        ORDER BY ABS(km_marker - ?)
+        LIMIT 1
+    ''', (route_id, km_marker)).fetchone()
+    
+    conn.close()
+    
+    if not conditions:
+        return jsonify({'error': 'No conditions found for this location'}), 404
+    
+    return jsonify(dict(conditions))
+
+@app.route('/calculate_wear', methods=['POST'])
+def calculate_wear():
+    data = request.json
+    
+    # Basic validation
+    if not all(k in data for k in ['train_id', 'route_id', 'start_km', 'end_km', 'speed', 'weight']):
+        return jsonify({'error': 'Missing required parameters'}), 400
     
     conn = get_db_connection()
-    cursor = conn.cursor()
     
-    # Get simulation parameters
-    cursor.execute('SELECT * FROM simulations WHERE id = ?', (simulation_id,))
-    simulation = cursor.fetchone()
+    # Get train data
+    train = conn.execute('SELECT * FROM trains WHERE id = ?', (data['train_id'],)).fetchone()
+    
+    # Calculate distance
+    distance = abs(float(data['end_km']) - float(data['start_km']))
+    
+    # Calculate basic wear factors (simplified for example)
+    speed_factor = float(data['speed']) / train['max_speed']
+    weight_factor = float(data['weight']) / train['total_weight']
+    distance_factor = distance / 100  # per 100 km
+    
+    # Calculate wear amounts (these would be more complex in reality)
+    wear_data = {
+        'crw_l': 0.5 * speed_factor * weight_factor * distance_factor,
+        'crw_r': 0.5 * speed_factor * weight_factor * distance_factor,
+        'side_l': 0.3 * speed_factor * weight_factor * distance_factor,
+        'side_r': 0.3 * speed_factor * weight_factor * distance_factor,
+        'remlife_l': -10 * speed_factor * weight_factor * distance_factor,
+        'remlife_r': -10 * speed_factor * weight_factor * distance_factor,
+        'wid_l': -0.05 * speed_factor * weight_factor * distance_factor,
+        'wid_r': -0.05 * speed_factor * weight_factor * distance_factor,
+        'tiltdiff_l': 0.01 * speed_factor * weight_factor * distance_factor,
+        'tiltdiff_r': 0.01 * speed_factor * weight_factor * distance_factor,
+        'gaugediff': 0.02 * speed_factor * weight_factor * distance_factor
+    }
+    
+    conn.close()
+    
+    return jsonify({
+        'wear_data': wear_data,
+        'distance': distance,
+        'calculation_factors': {
+            'speed_factor': speed_factor,
+            'weight_factor': weight_factor,
+            'distance_factor': distance_factor
+        }
+    })
+
+@app.route('/run_simulation', methods=['POST'])
+def run_simulation():
+    data = request.form
+    
+    # Basic validation
+    required_fields = ['train_id', 'route_id', 'start_station_id', 'end_station_id', 
+                      'speed', 'weight', 'frequency']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'Missing required parameters'}), 400
+    
+    conn = get_db_connection()
+    
+    try:
+        # Get station km markers
+        start_station = conn.execute('SELECT km_marker FROM stations WHERE id = ?', 
+                                   (data['start_station_id'],)).fetchone()
+        end_station = conn.execute('SELECT km_marker FROM stations WHERE id = ?', 
+                                 (data['end_station_id'],)).fetchone()
+        
+        if not start_station or not end_station:
+            raise ValueError("Invalid station selection")
+        
+        distance = abs(end_station['km_marker'] - start_station['km_marker'])
+        
+        # Create simulation record
+        cur = conn.execute('''
+            INSERT INTO simulations 
+            (train_id, route_id, start_station_id, end_station_id, 
+             speed, weight, frequency, distance, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data['train_id'], data['route_id'], data['start_station_id'], 
+            data['end_station_id'], data['speed'], data['weight'], 
+            data['frequency'], distance, 'successful'
+        ))
+        
+        simulation_id = cur.lastrowid
+        
+        # Calculate wear for each km segment along the route
+        step = 0.5  # km intervals
+        current_km = min(start_station['km_marker'], end_station['km_marker'])
+        end_km = max(start_station['km_marker'], end_station['km_marker'])
+        
+        while current_km <= end_km:
+            # Calculate wear for this segment (simplified)
+            wear_amounts = {
+                'crw_l': 0.01 * float(data['speed']) / 100,
+                'crw_r': 0.01 * float(data['speed']) / 100,
+                'side_l': 0.005 * float(data['weight']) / 100000,
+                'side_r': 0.005 * float(data['weight']) / 100000,
+                'remlife_l': -0.1 * float(data['speed']) * float(data['weight']) / 1000000,
+                'remlife_r': -0.1 * float(data['speed']) * float(data['weight']) / 1000000,
+                'wid_l': -0.001 * float(data['weight']) / 100000,
+                'wid_r': -0.001 * float(data['weight']) / 100000,
+                'tiltdiff_l': 0.0005 * float(data['speed']) / 100,
+                'tiltdiff_r': 0.0005 * float(data['speed']) / 100,
+                'gaugediff': 0.0002 * float(data['weight']) / 100000
+            }
+            
+            # Record wear output
+            conn.execute('''
+                INSERT INTO wear_outputs 
+                (simulation_id, km_marker, crw_l, crw_r, side_l, side_r, 
+                 remlife_l, remlife_r, wid_l, wid_r, tiltdiff_l, tiltdiff_r, gaugediff)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                simulation_id, current_km, 
+                wear_amounts['crw_l'], wear_amounts['crw_r'],
+                wear_amounts['side_l'], wear_amounts['side_r'],
+                wear_amounts['remlife_l'], wear_amounts['remlife_r'],
+                wear_amounts['wid_l'], wear_amounts['wid_r'],
+                wear_amounts['tiltdiff_l'], wear_amounts['tiltdiff_r'],
+                wear_amounts['gaugediff']
+            ))
+            
+            # Update rail conditions
+            conn.execute('''
+                UPDATE rail_conditions 
+                SET 
+                    crw_l = crw_l + ?,
+                    crw_r = crw_r + ?,
+                    side_l = side_l + ?,
+                    side_r = side_r + ?,
+                    remlife_l = remlife_l + ?,
+                    remlife_r = remlife_r + ?,
+                    wid_l = wid_l + ?,
+                    wid_r = wid_r + ?,
+                    tiltdiff_l = tiltdiff_l + ?,
+                    tiltdiff_r = tiltdiff_r + ?,
+                    gaugediff = gaugediff + ?,
+                    last_updated = CURRENT_TIMESTAMP
+                WHERE route_id = ? AND ABS(km_marker - ?) < 0.25
+            ''', (
+                wear_amounts['crw_l'], wear_amounts['crw_r'],
+                wear_amounts['side_l'], wear_amounts['side_r'],
+                wear_amounts['remlife_l'], wear_amounts['remlife_r'],
+                wear_amounts['wid_l'], wear_amounts['wid_r'],
+                wear_amounts['tiltdiff_l'], wear_amounts['tiltdiff_r'],
+                wear_amounts['gaugediff'],
+                data['route_id'], current_km
+            ))
+            
+            current_km += step
+        
+        conn.commit()
+        return redirect(url_for('simulation'))
+    
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        conn.close()
+
+@app.route('/get_wear_outputs/<int:simulation_id>')
+def get_wear_outputs(simulation_id):
+    conn = get_db_connection()
+    
+    wear_outputs = conn.execute('''
+        SELECT * FROM wear_outputs 
+        WHERE simulation_id = ?
+        ORDER BY km_marker
+    ''', (simulation_id,)).fetchall()
+    
+    simulation = conn.execute('''
+        SELECT s.*, t.name as train_name, r.name as route_name
+        FROM simulations s
+        JOIN trains t ON s.train_id = t.id
+        JOIN routes r ON s.route_id = r.id
+        WHERE s.id = ?
+    ''', (simulation_id,)).fetchone()
+    
+    conn.close()
+    
+    return render_template('wear_outputs.html',
+                         wear_outputs=wear_outputs,
+                         simulation=simulation)
+
+@app.route('/get_simulations')
+def get_simulations():
+    conn = get_db_connection()
+    simulations = conn.execute('''
+        SELECT s.id, s.created_at, t.name as train_name, r.name as route_name,
+               st1.name as start_point, st2.name as end_point
+        FROM simulations s
+        JOIN trains t ON s.train_id = t.id
+        JOIN routes r ON s.route_id = r.id
+        LEFT JOIN stations st1 ON s.start_station_id = st1.id
+        LEFT JOIN stations st2 ON s.end_station_id = st2.id
+        ORDER BY s.created_at DESC
+    ''').fetchall()
+    conn.close()
+    return jsonify({'simulations': [dict(sim) for sim in simulations]})
+
+@app.route('/get_visualization_data/<int:simulation_id>')
+def get_visualization_data(simulation_id):
+    conn = get_db_connection()
+    
+    # Get simulation details
+    simulation = conn.execute('''
+        SELECT s.*, t.name as train_name, r.name as route_name
+        FROM simulations s
+        JOIN trains t ON s.train_id = t.id
+        JOIN routes r ON s.route_id = r.id
+        WHERE s.id = ?
+    ''', (simulation_id,)).fetchone()
     
     if not simulation:
         conn.close()
         return jsonify({'error': 'Simulation not found'}), 404
     
-    # Get wear data
-    cursor.execute('''
-        SELECT * FROM wear_outputs 
-        WHERE simulation_id = ?
-        ORDER BY distance_km ASC
-    ''', (simulation_id,))
-    wear_outputs = cursor.fetchall()
+    # Get wear outputs with original conditions
+    wear_outputs = conn.execute('''
+        SELECT wo.*, 
+               rc.crw_l as original_crw_l, rc.crw_r as original_crw_r,
+               rc.side_l as original_side_l, rc.side_r as original_side_r,
+               rc.remlife_l as original_remlife_l, rc.remlife_r as original_remlife_r,
+               rc.wid_l as original_wid_l, rc.wid_r as original_wid_r,
+               rc.tiltdiff_l as original_tiltdiff_l, rc.tiltdiff_r as original_tiltdiff_r,
+               rc.type_l as original_type_l, rc.type_r as original_type_r,
+               rc.gaugediff as original_gaugediff,
+               (rc.crw_l + rc.side_l) as original_wear_depth,
+               (wo.crw_l + wo.side_l) as wear_depth
+        FROM wear_outputs wo
+        JOIN original_rail_conditions rc ON wo.km_marker = rc.km_marker 
+            AND rc.route_id = (SELECT route_id FROM simulations WHERE id = ?)
+        WHERE wo.simulation_id = ?
+        ORDER BY wo.km_marker
+    ''', (simulation_id, simulation_id)).fetchall()
+    
     conn.close()
     
     return jsonify({
         'simulation': dict(simulation),
-        'wear_outputs': [dict(output) for output in wear_outputs]
+        'wear_outputs': [dict(wo) for wo in wear_outputs]
     })
 
-# Other routes remain the same
-@app.route('/analytics_dashboard')
-def analytics_dashboard():
-    return render_template('analytics_dashboard.html')
-
-@app.route('/upload')
-def upload():
-    return render_template('upload.html')
+@app.route('/analytics')
+def analytics():
+    return render_template('analytics.html')
 
 @app.route('/visualization')
 def visualization():
-    return render_template('visualization.html')
+    conn = get_db_connection()
+    simulations = conn.execute('''
+        SELECT s.id, s.created_at, t.name as train_name, r.name as route_name
+        FROM simulations s
+        JOIN trains t ON s.train_id = t.id
+        JOIN routes r ON s.route_id = r.id
+        ORDER BY s.created_at DESC
+    ''').fetchall()
+    conn.close()
+    return render_template('visualization.html', simulations=simulations)
+
+@app.route('/maintenance')
+def maintenance():
+    return render_template('maintenance.html')
+
+@app.route('/reports')
+def reports():
+    return render_template('reports.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-    git init
-git add README.md
-git add .
-git commit -m "first commit"
-git branch -M main
-git remote add origin https://github.com/JayboyX/Prev-man-latest-2.0.git
-git push -u origin main

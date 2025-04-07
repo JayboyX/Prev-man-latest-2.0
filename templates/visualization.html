@@ -6,8 +6,7 @@
     <title>RailTrack Pro - Visualization</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .sidebar {
             transition: all 0.3s ease;
@@ -28,22 +27,19 @@
             border-left: 4px solid #93c5fd;
         }
         .chart-container {
-            height: 400px;
+            position: relative;
+            min-height: 400px;
+            width: 100%;
         }
-        .chartjs-datalabels {
-            text-shadow: 1px 1px 2px white, -1px -1px 2px white;
-            pointer-events: none;
+        .metric-card {
+            transition: all 0.2s ease;
         }
-        .data-table-container {
-            max-height: 400px;
-            overflow-y: auto;
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .log-entry {
-            animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        #loadingIndicator {
+            z-index: 9999;
         }
     </style>
 </head>
@@ -53,35 +49,35 @@
         <div class="p-5 flex items-center justify-between border-b border-gray-700">
             <div class="flex items-center">
                 <i class="fas fa-train text-blue-400 text-2xl mr-3"></i>
-                <h1 class="text-xl font-bold">RailTrack Pro</h1>
+                <h1 class="text-xl font-bold">JustRail</h1>
             </div>
             <button id="toggleSidebar" class="text-gray-400 hover:text-white">
                 <i class="fas fa-bars"></i>
             </button>
         </div>
-        
+
         <nav class="mt-6">
             <div class="px-4">
                 <p class="text-gray-400 uppercase text-xs font-semibold mb-3">Main</p>
                 <a href="/" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
-                    <i class="fas fa-tachometer-alt mr-3"></i>
-                    <span class="nav-text">Dashboard</span>
-                </a>
-                <a href="/" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
                     <i class="fas fa-cogs mr-3"></i>
                     <span class="nav-text">Simulation</span>
                 </a>
-                <a href="/analytics_dashboard" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                <a href="/analytics" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
                     <i class="fas fa-chart-line mr-3"></i>
                     <span class="nav-text">Analytics</span>
                 </a>
-            </div>
-            
-            <div class="px-4 mt-6">
-                <p class="text-gray-400 uppercase text-xs font-semibold mb-3">Tools</p>
                 <a href="/visualization" class="nav-item active flex items-center py-3 px-4 text-white hover:bg-gray-800 rounded transition">
                     <i class="fas fa-project-diagram mr-3"></i>
                     <span class="nav-text">Visualization</span>
+                </a>
+            </div>
+
+            <div class="px-4 mt-6">
+                <p class="text-gray-400 uppercase text-xs font-semibold mb-3">Tools</p>
+                <a href="/maintenance" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-tools mr-3"></i>
+                    <span class="nav-text">Maintenance</span>
                 </a>
                 <a href="/reports" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
                     <i class="fas fa-file-alt mr-3"></i>
@@ -89,14 +85,14 @@
                 </a>
             </div>
         </nav>
-        
+
         <div class="absolute bottom-0 w-full p-4 border-t border-gray-700">
             <div class="flex items-center">
                 <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
-                    <span class="text-white font-bold">AD</span>
+                    <span class="text-white font-bold">J</span>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium">Admin User</p>
+                    <p class="text-sm font-medium">Justice</p>
                     <p class="text-xs text-gray-400">Administrator</p>
                 </div>
             </div>
@@ -107,125 +103,47 @@
     <div class="main-content min-h-screen">
         <header class="bg-white shadow-sm">
             <div class="flex justify-between items-center py-4 px-6">
-                <h2 class="text-xl font-semibold text-gray-800">Simulation Visualization</h2>
+                <h2 class="text-xl font-semibold text-gray-800">Rail Wear Visualization</h2>
                 <div class="flex items-center space-x-4">
-                    <button class="p-2 rounded-full hover:bg-gray-100">
-                        <i class="fas fa-bell text-gray-500"></i>
-                    </button>
-                    <button class="p-2 rounded-full hover:bg-gray-100">
-                        <i class="fas fa-question-circle text-gray-500"></i>
+                    <button onclick="window.history.back()" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">
+                        <i class="fas fa-arrow-left mr-1"></i> Back
                     </button>
                 </div>
             </div>
         </header>
 
         <main class="p-6">
-            <!-- Simulation Selection Card -->
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center hidden">
+                <div class="bg-white p-6 rounded-lg shadow-lg flex items-center">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Loading data...</span>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Select Simulation</h3>
-                <div class="flex flex-wrap items-end gap-4">
-                    <div class="flex-1 min-w-[200px]">
-                        <select id="simulation-select" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Visualization Controls</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Select Simulation</label>
+                        <select id="simulationSelect" class="w-full border border-gray-300 rounded-md p-2">
                             <option value="">Loading simulations...</option>
                         </select>
                     </div>
                     <div>
-                        <button id="refresh-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center">
-                            <i class="fas fa-sync-alt mr-2"></i> Refresh
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Simulation Info -->
-            <div id="simulation-info" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-blue-600 font-medium">Total Distance</p>
-                                <p id="total-distance" class="text-2xl font-bold text-blue-800">0 km</p>
-                            </div>
-                            <i class="fas fa-route text-blue-400 text-2xl"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-green-50 p-4 rounded-lg border border-green-100">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-green-600 font-medium">Train Model</p>
-                                <p id="train-model" class="text-2xl font-bold text-green-800">-</p>
-                            </div>
-                            <i class="fas fa-train text-green-400 text-2xl"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-purple-600 font-medium">Date</p>
-                                <p id="simulation-date" class="text-2xl font-bold text-purple-800">-</p>
-                            </div>
-                            <i class="fas fa-calendar-alt text-purple-400 text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-yellow-600 font-medium">Speed Gain</p>
-                                <p id="speed-gain" class="text-2xl font-bold text-yellow-800">1.0</p>
-                            </div>
-                            <i class="fas fa-tachometer-alt text-yellow-400 text-2xl"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-red-50 p-4 rounded-lg border border-red-100">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-red-600 font-medium">Weight Gain</p>
-                                <p id="weight-gain" class="text-2xl font-bold text-red-800">1.0</p>
-                            </div>
-                            <i class="fas fa-weight text-red-400 text-2xl"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-indigo-600 font-medium">Frequency Gain</p>
-                                <p id="frequency-gain" class="text-2xl font-bold text-indigo-800">1.0</p>
-                            </div>
-                            <i class="fas fa-wave-square text-indigo-400 text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chart Selection -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div class="flex flex-wrap gap-4">
-                    <div class="flex-1 min-w-[200px]">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Chart Type</label>
-                        <select id="chart-type" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                            <option value="line">Line Chart</option>
-                            <option value="bar">Bar Chart</option>
-                            <option value="scatter">Scatter Plot</option>
-                        </select>
-                    </div>
-                    
-                    <div class="flex-1 min-w-[200px]">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Metric</label>
-                        <select id="metric-select" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <select id="metricSelect" class="w-full border border-gray-300 rounded-md p-2">
                             <option value="wear_depth">Wear Depth (mm)</option>
                             <option value="crw_l">CRW Left (mm)</option>
                             <option value="crw_r">CRW Right (mm)</option>
                             <option value="side_l">Side Left (mm)</option>
                             <option value="side_r">Side Right (mm)</option>
-                            <option value="remlife_l">Remaining Life Left (days)</option>
-                            <option value="remlife_r">Remaining Life Right (days)</option>
+                            <option value="remlife_l">Remaining Life Left (%)</option>
+                            <option value="remlife_r">Remaining Life Right (%)</option>
                             <option value="wid_l">Width Left (mm)</option>
                             <option value="wid_r">Width Right (mm)</option>
                             <option value="tiltdiff_l">Tilt Difference Left (degree)</option>
@@ -236,563 +154,685 @@
                             <option value="view_all">View All</option>
                         </select>
                     </div>
-                    
-                    <div class="flex items-end min-w-[200px]">
-                        <button id="export-data" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition w-full flex items-center justify-center">
-                            <i class="fas fa-download mr-2"></i> Export Data
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Chart Type</label>
+                        <div class="flex space-x-2">
+                            <button id="lineChartBtn" class="px-3 py-1 bg-blue-600 text-white rounded-md">Line</button>
+                            <button id="barChartBtn" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Bar</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Actions</label>
+                        <button id="exportBtn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm w-full">
+                            <i class="fas fa-file-export mr-1"></i> Export Data
                         </button>
                     </div>
                 </div>
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">From KM Marker</label>
+                        <input type="number" id="fromKm" class="w-full border border-gray-300 rounded-md p-2" step="0.1" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">To KM Marker</label>
+                        <input type="number" id="toKm" class="w-full border border-gray-300 rounded-md p-2" step="0.1" min="0">
+                    </div>
+                    <div class="flex items-end">
+                        <button id="applyRangeBtn" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md w-full">
+                            Apply Range
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="showOriginal" class="rounded text-blue-600" checked>
+                        <span>Show Original Condition</span>
+                    </label>
+                </div>
             </div>
 
-            <!-- Chart Section -->
+            <!-- Metric Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="metric-card bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
+                    <p class="text-sm text-gray-500">Selected Metric</p>
+                    <p id="selectedMetric" class="text-2xl font-bold">--</p>
+                    <p class="text-xs text-gray-500" id="metricUnit">--</p>
+                </div>
+                <div class="metric-card bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
+                    <p class="text-sm text-gray-500">Max Value</p>
+                    <p id="maxValue" class="text-2xl font-bold">--</p>
+                    <p class="text-xs text-gray-500">Peak wear</p>
+                </div>
+                <div class="metric-card bg-white rounded-lg shadow-md p-4 border-l-4 border-red-500">
+                    <p class="text-sm text-gray-500">Min Value</p>
+                    <p id="minValue" class="text-2xl font-bold">--</p>
+                    <p class="text-xs text-gray-500">Lowest point</p>
+                </div>
+                <div class="metric-card bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
+                    <p class="text-sm text-gray-500">Avg Difference</p>
+                    <p id="avgDiff" class="text-2xl font-bold">--</p>
+                    <p class="text-xs text-gray-500">From original</p>
+                </div>
+            </div>
+
+            <!-- Main Chart -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Visualization</h3>
-                    <div class="flex space-x-2">
-                        <button id="toggle-table" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition flex items-center">
-                            <i class="fas fa-table mr-2"></i> Show Data Table
-                        </button>
-                        <button id="analyze-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center">
-                            <i class="fas fa-chart-line mr-2"></i> Analyze
-                        </button>
-                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800" id="chartTitle">Wear Visualization</h3>
+                    <button id="exportChartBtn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm">
+                        <i class="fas fa-download mr-1"></i> Export Chart
+                    </button>
                 </div>
-                <div class="chart-container bg-white p-4 rounded-lg border border-gray-200">
-                    <canvas id="visualization-chart"></canvas>
+                <div class="chart-container">
+                    <canvas id="wearChart"></canvas>
                 </div>
             </div>
 
-            <!-- Data Table Section -->
-            <div id="data-table-section" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+            <!-- Detailed Data Table -->
+            <div class="bg-white rounded-lg shadow-md p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Detailed Data Points</h3>
-                    <button onclick="document.getElementById('data-table-section').classList.add('hidden')" class="p-2 text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times"></i>
+                    <h3 class="text-lg font-semibold text-gray-800">Detailed Wear Data</h3>
+                    <button id="toggleTableBtn" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-md text-sm">
+                        <i class="fas fa-chevron-up mr-1"></i> Hide
                     </button>
                 </div>
-                <div class="data-table-container">
+                <div id="dataTable" class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distance (km)</th>
-                                <th id="metric-header" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KM Marker</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Original Value</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Value</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difference</th>
                             </tr>
                         </thead>
-                        <tbody id="data-table-body" class="bg-white divide-y divide-gray-200">
-                            <!-- Data will be inserted here -->
+                        <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Data will be loaded here -->
                         </tbody>
                     </table>
                 </div>
-            </div>
-
-            <!-- Logs Section -->
-            <div id="logs-section" class="bg-white rounded-lg shadow-md p-6 hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Simulation Logs</h3>
-                    <button onclick="document.getElementById('logs-section').classList.add('hidden')" class="p-2 text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div id="logs-content" class="h-64 overflow-y-auto p-3 bg-gray-50 rounded-md border border-gray-200"></div>
             </div>
         </main>
     </div>
 
     <script>
-// Register plugins
-Chart.register(ChartDataLabels);
-
-// Global variables
-let chart;
-let simulationsList = [];
-let currentSimulationId = null;
-let currentSimulationData = null;
-let currentWearData = [];
-let thresholdDataset = null;
-let isAnalyzing = false;
-
-// Initialize the page
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize sidebar toggle
-    document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
-    
-    // Set up event listeners
-    document.getElementById('simulation-select').addEventListener('change', loadSimulationData);
-    document.getElementById('refresh-btn').addEventListener('click', loadSimulations);
-    document.getElementById('chart-type').addEventListener('change', updateChart);
-    document.getElementById('metric-select').addEventListener('change', updateChart);
-    document.getElementById('toggle-table').addEventListener('click', toggleDataTable);
-    document.getElementById('analyze-btn').addEventListener('click', toggleAnalysis);
-    document.getElementById('export-data').addEventListener('click', exportData);
-    
-    // Remove scatter plot option
-    const chartTypeSelect = document.getElementById('chart-type');
-    const scatterOption = Array.from(chartTypeSelect.options).find(opt => opt.value === 'scatter');
-    if (scatterOption) {
-        chartTypeSelect.remove(scatterOption.index);
-    }
-    
-    // Check for last viewed simulation
-    const lastSimId = sessionStorage.getItem('lastSimulationId');
-    
-    // Load simulations
-    loadSimulations().then(() => {
-        if (lastSimId) {
-            const select = document.getElementById('simulation-select');
-            const option = Array.from(select.options).find(opt => opt.value === lastSimId);
-            if (option) {
-                select.value = lastSimId;
-                loadSimulationData();
-            }
-        }
-    });
-});
-
-// Toggle analysis mode
-function toggleAnalysis() {
-    if (!chart || !currentWearData.length) return;
-    
-    if (isAnalyzing) {
-        // Remove threshold line if it exists
-        if (thresholdDataset !== null) {
-            chart.data.datasets = chart.data.datasets.filter(ds => ds !== thresholdDataset);
-            thresholdDataset = null;
-        }
-        document.getElementById('logs-section').classList.add('hidden');
-    } else {
-        // Add threshold line
-        const thresholds = {
-            wear_depth: 2.0,
-            crw_l: 1.5,
-            crw_r: 1.5,
-            side_l: 1.0,
-            side_r: 1.0,
-            remlife_l: 100.0,
-            remlife_r: 100.0,
-            wid_l: 55.0,
-            wid_r: 55.0,
-            tiltdiff_l: 0.5,
-            tiltdiff_r: 0.5,
-            type_l: 50.0,
-            type_r: 50.0,
-            gaugediff: 1.0
+        // Global variables
+        let wearChart = null;
+        let currentData = null;
+        let simulationsList = [];
+        let currentMetric = 'wear_depth';
+        let chartType = 'line';
+        let currentRange = { from: null, to: null };
+        
+        const metricInfo = {
+            'wear_depth': { name: 'Wear Depth', unit: 'mm', original: 'original_wear_depth' },
+            'crw_l': { name: 'Left Corrugation', unit: 'mm', original: 'original_crw_l' },
+            'crw_r': { name: 'Right Corrugation', unit: 'mm', original: 'original_crw_r' },
+            'side_l': { name: 'Left Side Wear', unit: 'mm', original: 'original_side_l' },
+            'side_r': { name: 'Right Side Wear', unit: 'mm', original: 'original_side_r' },
+            'remlife_l': { name: 'Left Life Remaining', unit: '%', original: 'original_remlife_l' },
+            'remlife_r': { name: 'Right Life Remaining', unit: '%', original: 'original_remlife_r' },
+            'wid_l': { name: 'Width Left', unit: 'mm', original: 'original_wid_l' },
+            'wid_r': { name: 'Width Right', unit: 'mm', original: 'original_wid_r' },
+            'tiltdiff_l': { name: 'Tilt Difference Left', unit: 'degree', original: 'original_tiltdiff_l' },
+            'tiltdiff_r': { name: 'Tilt Difference Right', unit: 'degree', original: 'original_tiltdiff_r' },
+            'type_l': { name: 'Type Left', unit: 'kg/m', original: 'original_type_l' },
+            'type_r': { name: 'Type Right', unit: 'kg/m', original: 'original_type_r' },
+            'gaugediff': { name: 'Gauge Difference', unit: 'mm', original: 'original_gaugediff' }
         };
-        
-        const metric = document.getElementById('metric-select').value;
-        const chartType = document.getElementById('chart-type').value;
-        
-        if (metric === 'view_all') {
-            thresholdDataset = {
-                label: 'Critical Threshold (Wear Depth)',
-                data: currentWearData.map(() => thresholds.wear_depth),
-                borderColor: 'rgba(255, 99, 132, 1)',
-                backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                pointRadius: 0,
-                fill: chartType === 'bar'
-            };
-        } else {
-            thresholdDataset = {
-                label: 'Critical Threshold',
-                data: currentWearData.map(() => thresholds[metric]),
-                borderColor: 'rgba(255, 99, 132, 1)',
-                backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                pointRadius: 0,
-                fill: chartType === 'bar'
-            };
-        }
-        
-        chart.data.datasets.push(thresholdDataset);
-        showAnalysisLogs();
-    }
-    
-    isAnalyzing = !isAnalyzing;
-    chart.update();
-}
 
-// Show analysis logs
-function showAnalysisLogs() {
-    const logsContent = document.getElementById('logs-content');
-    logsContent.innerHTML = '';
-    
-    const thresholds = {
-        wear_depth: 2.0,
-        crw_l: 1.5,
-        crw_r: 1.5,
-        side_l: 1.0,
-        side_r: 1.0,
-        remlife_l: 100.0,
-        remlife_r: 100.0,
-        wid_l: 55.0,
-        wid_r: 55.0,
-        tiltdiff_l: 0.5,
-        tiltdiff_r: 0.5,
-        type_l: 50.0,
-        type_r: 50.0,
-        gaugediff: 1.0
-    };
-    
-    const metric = document.getElementById('metric-select').value;
-    
-    if (metric === 'view_all') {
-        let logsHTML = '<h4 class="font-bold mb-2">Analysis Results</h4>';
-        
-        Object.keys(thresholds).forEach(m => {
-            const criticalPoints = currentWearData.filter(item => item[m] >= thresholds[m]);
-            const totalPoints = currentWearData.length;
-            const percentage = (criticalPoints.length / totalPoints * 100).toFixed(1);
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load simulations when page loads
+            loadSimulations();
             
-            logsHTML += `
-                <div class="mb-4 p-3 rounded-md ${criticalPoints.length > 0 ? 'bg-red-50' : 'bg-green-50'}">
-                    <p class="font-medium">${m.replace('_', ' ').toUpperCase()}</p>
-                    <p>Threshold: ${thresholds[m]}</p>
-                    <p>Critical points: ${criticalPoints.length}/${totalPoints} (${percentage}%)</p>
-                    <p>Status: ${criticalPoints.length > 0 ? 'Needs attention' : 'Normal'}</p>
-                    ${criticalPoints.length > 0 ? `
-                    <div class="mt-2">
-                        <p class="text-sm font-medium">Critical Locations:</p>
-                        <ul class="list-disc pl-5 text-sm">
-                            ${criticalPoints.slice(0, 5).map(item => `
-                                <li>${item.location} (${item.distance_km.toFixed(1)} km): ${item[m].toFixed(3)}</li>
-                            `).join('')}
-                            ${criticalPoints.length > 5 ? `<li>...and ${criticalPoints.length - 5} more</li>` : ''}
-                        </ul>
-                    </div>
-                    ` : ''}
-                </div>
-            `;
-        });
-        
-        logsContent.innerHTML = logsHTML;
-    } else {
-        const criticalPoints = currentWearData.filter(item => item[metric] >= thresholds[metric]);
-        const totalPoints = currentWearData.length;
-        const percentage = (criticalPoints.length / totalPoints * 100).toFixed(1);
-        
-        logsContent.innerHTML = `
-            <h4 class="font-bold mb-2">Analysis Results</h4>
-            <div class="mb-4 p-3 rounded-md ${criticalPoints.length > 0 ? 'bg-red-50' : 'bg-green-50'}">
-                <p class="font-medium">${metric.replace('_', ' ').toUpperCase()}</p>
-                <p>Threshold: ${thresholds[metric]}</p>
-                <p>Critical points: ${criticalPoints.length}/${totalPoints} (${percentage}%)</p>
-                <p>Status: ${criticalPoints.length > 0 ? 'Needs attention' : 'Normal'}</p>
-            </div>
-            ${criticalPoints.length > 0 ? `
-            <div class="mt-4">
-                <p class="font-medium">Critical Points:</p>
-                <ul class="list-disc pl-5 mt-2">
-                    ${criticalPoints.map(item => `
-                        <li>${item.location} (${item.distance_km.toFixed(1)} km): ${item[metric].toFixed(3)}</li>
-                    `).join('')}
-                </ul>
-            </div>
-            ` : ''}
-        `;
-    }
-    
-    document.getElementById('logs-section').classList.remove('hidden');
-}
+            // Setup event listeners
+            document.getElementById('simulationSelect').addEventListener('change', function() {
+                if (this.value) {
+                    loadSimulationData(this.value);
+                }
+            });
+            
+            document.getElementById('metricSelect').addEventListener('change', function() {
+                currentMetric = this.value;
+                updateChart();
+                updateMetricCards();
+                updateDataTable();
+            });
 
-// Update the chart with current selections
-function updateChart() {
-    if (!currentSimulationData || !currentWearData.length) return;
-    
-    const chartType = document.getElementById('chart-type').value;
-    const metric = document.getElementById('metric-select').value;
-    const ctx = document.getElementById('visualization-chart').getContext('2d');
-    
-    if (chart) {
-        chart.destroy();
-        thresholdDataset = null;
-        isAnalyzing = false;
-    }
-    
-    const units = {
-        wear_depth: 'mm',
-        crw_l: 'mm',
-        crw_r: 'mm',
-        side_l: 'mm',
-        side_r: 'mm',
-        remlife_l: 'days',
-        remlife_r: 'days',
-        wid_l: 'mm',
-        wid_r: 'mm',
-        tiltdiff_l: 'degree',
-        tiltdiff_r: 'degree',
-        type_l: 'kg/m',
-        type_r: 'kg/m',
-        gaugediff: 'mm'
-    };
-    
-    let datasets = [];
-    
-    if (metric === 'view_all') {
-        // Show all metrics
-        Object.keys(units).forEach((m, i) => {
-            datasets.push({
-                label: `${m.replace('_', ' ').toUpperCase()} (${units[m]})`,
-                data: currentWearData.map(item => item[m]),
-                borderColor: `hsl(${(i * 360) / Object.keys(units).length}, 70%, 50%)`,
-                backgroundColor: `hsl(${(i * 360) / Object.keys(units).length}, 70%, 50%)`,
-                borderWidth: 2,
-                pointRadius: 4
+            document.getElementById('lineChartBtn').addEventListener('click', function() {
+                chartType = 'line';
+                this.classList.add('bg-blue-600', 'text-white');
+                this.classList.remove('bg-gray-200');
+                document.getElementById('barChartBtn').classList.add('bg-gray-200');
+                document.getElementById('barChartBtn').classList.remove('bg-blue-600', 'text-white');
+                updateChart();
+            });
+
+            document.getElementById('barChartBtn').addEventListener('click', function() {
+                chartType = 'bar';
+                this.classList.add('bg-blue-600', 'text-white');
+                this.classList.remove('bg-gray-200');
+                document.getElementById('lineChartBtn').classList.add('bg-gray-200');
+                document.getElementById('lineChartBtn').classList.remove('bg-blue-600', 'text-white');
+                updateChart();
+            });
+
+            document.getElementById('showOriginal').addEventListener('change', updateChart);
+            document.getElementById('applyRangeBtn').addEventListener('click', applyRange);
+            document.getElementById('exportBtn').addEventListener('click', exportData);
+            document.getElementById('exportChartBtn').addEventListener('click', exportChart);
+            document.getElementById('toggleTableBtn').addEventListener('click', toggleDataTable);
+            
+            // Initialize sidebar toggle
+            document.getElementById('toggleSidebar').addEventListener('click', function() {
+                const sidebar = document.querySelector('.sidebar');
+                const mainContent = document.querySelector('.main-content');
+                
+                sidebar.classList.toggle('sidebar-collapsed');
+                mainContent.classList.toggle('main-content-expanded');
+                
+                document.querySelectorAll('.nav-text').forEach(text => {
+                    text.classList.toggle('hidden');
+                });
             });
         });
-    } else {
-        // Show selected metric
-        datasets.push({
-            label: `${metric.replace('_', ' ').toUpperCase()} (${units[metric]})`,
-            data: currentWearData.map(item => item[metric]),
-            borderColor: 'rgba(75, 192, 192, 1)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            borderWidth: 2,
-            pointRadius: 4
-        });
-    }
-    
-    chart = new Chart(ctx, {
-        type: chartType,
-        data: {
-            labels: currentWearData.map(item => `${item.distance_km.toFixed(1)} km`),
-            datasets: datasets
-        },
-        plugins: [ChartDataLabels],
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.raw}`;
-                        }
-                    }
-                },
-                datalabels: {
-                    display: chartType !== 'line' || metric !== 'view_all',
-                    align: 'top',
-                    formatter: function(value, context) {
-                        if (metric === 'view_all' && context.datasetIndex !== 0) return '';
-                        return value.toFixed(2);
-                    },
-                    color: '#333',
-                    font: {
-                        weight: 'bold',
-                        size: 10
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    title: {
-                        display: true,
-                        text: 'Value'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Distance (km)'
-                    }
-                }
-            }
-        }
-    });
-    
-    // Re-apply analysis if it was active
-    if (isAnalyzing) {
-        toggleAnalysis();
-    }
-}
 
-// Toggle data table visibility
-function toggleDataTable() {
-    const tableSection = document.getElementById('data-table-section');
-    const tableBody = document.getElementById('data-table-body');
-    const metricHeader = document.getElementById('metric-header');
-    const metric = document.getElementById('metric-select').value;
-    const units = {
-        wear_depth: 'mm',
-        crw_l: 'mm',
-        crw_r: 'mm',
-        side_l: 'mm',
-        side_r: 'mm',
-        remlife_l: 'days',
-        remlife_r: 'days',
-        wid_l: 'mm',
-        wid_r: 'mm',
-        tiltdiff_l: 'degree',
-        tiltdiff_r: 'degree',
-        type_l: 'kg/m',
-        type_r: 'kg/m',
-        gaugediff: 'mm'
-    };
-    
-    if (!currentWearData.length) return;
-    
-    if (tableSection.classList.contains('hidden')) {
-        // Populate table
-        tableBody.innerHTML = '';
-        
-        if (metric === 'view_all') {
-            metricHeader.textContent = 'All Metrics';
-            currentWearData.forEach(item => {
-                const row = document.createElement('tr');
-                let metricsHtml = '';
+        // Load available simulations
+        async function loadSimulations() {
+            showLoading(true);
+            try {
+                const response = await fetch('/get_simulations');
+                if (!response.ok) throw new Error('Network response was not ok');
                 
-                Object.keys(units).forEach(m => {
-                    metricsHtml += `
-                        <div class="mb-1">
-                            <span class="font-medium">${m.replace('_', ' ').toUpperCase()}:</span>
-                            <span>${item[m].toFixed(3)} ${units[m]}</span>
-                        </div>
-                    `;
+                const data = await response.json();
+                simulationsList = data.simulations;
+                
+                const select = document.getElementById('simulationSelect');
+                select.innerHTML = '<option value="">Select a simulation...</option>';
+                
+                simulationsList.forEach(sim => {
+                    const option = document.createElement('option');
+                    option.value = sim.id;
+                    option.textContent = `${sim.train_name} on ${sim.route_name} (${new Date(sim.created_at).toLocaleDateString()})`;
+                    select.appendChild(option);
                 });
                 
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${item.location}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${item.distance_km.toFixed(1)}</td>
-                    <td class="px-6 py-4">${metricsHtml}</td>
-                `;
-                tableBody.appendChild(row);
+            } catch (error) {
+                console.error('Error loading simulations:', error);
+                alert('Failed to load simulations. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Load data for selected simulation
+        async function loadSimulationData(simulationId) {
+            showLoading(true);
+            try {
+                const response = await fetch(`/get_visualization_data/${simulationId}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                currentData = data;
+                
+                // Initialize KM range inputs
+                if (data.wear_outputs && data.wear_outputs.length > 0) {
+                    const kmMarkers = data.wear_outputs.map(d => d.km_marker);
+                    const minKm = Math.min(...kmMarkers);
+                    const maxKm = Math.max(...kmMarkers);
+                    
+                    document.getElementById('fromKm').value = minKm;
+                    document.getElementById('toKm').value = maxKm;
+                    currentRange = { from: minKm, to: maxKm };
+                }
+                
+                updateChart();
+                updateMetricCards();
+                updateDataTable();
+                
+            } catch (error) {
+                console.error('Error loading simulation data:', error);
+                alert(`Error: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Apply KM range filter
+        function applyRange() {
+            const fromKm = parseFloat(document.getElementById('fromKm').value);
+            const toKm = parseFloat(document.getElementById('toKm').value);
+            
+            if (isNaN(fromKm)) {
+                alert("Please enter a valid 'From KM' value");
+                return;
+            }
+            
+            if (isNaN(toKm)) {
+                alert("Please enter a valid 'To KM' value");
+                return;
+            }
+            
+            if (fromKm >= toKm) {
+                alert("'From KM' must be less than 'To KM'");
+                return;
+            }
+            
+            currentRange = { from: fromKm, to: toKm };
+            updateChart();
+            updateMetricCards();
+            updateDataTable();
+        }
+
+        // Filter data by current KM range
+        function getFilteredData() {
+            if (!currentData || !currentData.wear_outputs) return [];
+            
+            return currentData.wear_outputs.filter(item => {
+                return item.km_marker >= currentRange.from && item.km_marker <= currentRange.to;
             });
-        } else {
-            metricHeader.textContent = `${metric.replace('_', ' ').toUpperCase()} (${units[metric]})`;
-            currentWearData.forEach(item => {
+        }
+
+        // Update the chart
+        function updateChart() {
+            const filteredData = getFilteredData();
+            if (!filteredData.length) return;
+
+            const showOriginal = document.getElementById('showOriginal').checked;
+            const metric = currentMetric;
+            
+            // For "View All" mode
+            if (metric === 'view_all') {
+                updateViewAllChart(filteredData, showOriginal);
+                return;
+            }
+            
+            const originalMetric = metricInfo[metric].original;
+            const kmMarkers = filteredData.map(d => d.km_marker);
+            const currentValues = filteredData.map(d => d[metric]);
+            const originalValues = filteredData.map(d => d[originalMetric]);
+
+            // Update chart title
+            document.getElementById('chartTitle').textContent = 
+                `${metricInfo[metric].name} - ${currentData.simulation.train_name} on ${currentData.simulation.route_name}`;
+
+            // Create or update chart
+            const ctx = document.getElementById('wearChart').getContext('2d');
+            
+            if (wearChart) {
+                wearChart.destroy();
+            }
+
+            const datasets = [{
+                label: `Current ${metricInfo[metric].name}`,
+                data: currentValues,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: chartType === 'bar' ? 'rgba(59, 130, 246, 0.7)' : 'rgba(59, 130, 246, 0.5)',
+                borderWidth: 2,
+                tension: 0.1,
+                fill: false
+            }];
+
+            if (showOriginal) {
+                datasets.push({
+                    label: `Original ${metricInfo[metric].name}`,
+                    data: originalValues,
+                    borderColor: 'rgb(156, 163, 175)',
+                    backgroundColor: chartType === 'bar' ? 'rgba(156, 163, 175, 0.3)' : 'rgba(156, 163, 175, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.1,
+                    fill: false
+                });
+            }
+
+            wearChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: kmMarkers,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(4)} ${metricInfo[metric].unit}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'KM Marker'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: metricInfo[metric].unit
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Special chart for "View All" mode
+        function updateViewAllChart(filteredData, showOriginal) {
+            const ctx = document.getElementById('wearChart').getContext('2d');
+            
+            if (wearChart) {
+                wearChart.destroy();
+            }
+
+            // Prepare datasets for all metrics
+            const datasets = [];
+            const kmMarkers = filteredData.map(d => d.km_marker);
+            
+            // Colors for different metrics
+            const colors = [
+                'rgb(59, 130, 246)',   // Blue
+                'rgb(16, 185, 129)',   // Green
+                'rgb(245, 158, 11)',   // Yellow
+                'rgb(239, 68, 68)',    // Red
+                'rgb(139, 92, 246)',   // Purple
+                'rgb(6, 182, 212)',    // Cyan
+                'rgb(234, 88, 12)',    // Orange
+                'rgb(220, 38, 38)',    // Dark Red
+                'rgb(5, 150, 105)',    // Dark Green
+                'rgb(124, 58, 237)',   // Dark Purple
+                'rgb(8, 145, 178)',    // Dark Cyan
+                'rgb(194, 65, 12)',    // Dark Orange
+                'rgb(109, 40, 217)'    // Deep Purple
+            ];
+
+            Object.keys(metricInfo).forEach((metric, index) => {
+                if (metric === 'wear_depth') return; // Skip generic wear depth if we're showing all
+                
+                const originalMetric = metricInfo[metric].original;
+                const currentValues = filteredData.map(d => d[metric]);
+                
+                datasets.push({
+                    label: `Current ${metricInfo[metric].name}`,
+                    data: currentValues,
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: chartType === 'bar' ? 
+                        colors[index % colors.length].replace(')', ', 0.5)') : 
+                        colors[index % colors.length].replace(')', ', 0.2)'),
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: false
+                });
+
+                if (showOriginal) {
+                    const originalValues = filteredData.map(d => d[originalMetric]);
+                    datasets.push({
+                        label: `Original ${metricInfo[metric].name}`,
+                        data: originalValues,
+                        borderColor: colors[index % colors.length],
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        tension: 0.1,
+                        fill: false
+                    });
+                }
+            });
+
+            // Update chart title
+            document.getElementById('chartTitle').textContent = 
+                `All Metrics - ${currentData.simulation.train_name} on ${currentData.simulation.route_name}`;
+
+            wearChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: kmMarkers,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const metric = context.dataset.label.replace('Current ', '').replace('Original ', '');
+                                    const unit = Object.values(metricInfo).find(m => m.name === metric)?.unit || '';
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(4)} ${unit}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'KM Marker'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Value'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update metric cards
+        function updateMetricCards() {
+            const filteredData = getFilteredData();
+            if (!filteredData.length) return;
+
+            if (currentMetric === 'view_all') {
+                // For "View All" mode, show general info
+                document.getElementById('selectedMetric').textContent = "All Metrics";
+                document.getElementById('metricUnit').textContent = "Multiple units";
+                document.getElementById('maxValue').textContent = "--";
+                document.getElementById('minValue').textContent = "--";
+                document.getElementById('avgDiff').textContent = "--";
+                return;
+            }
+
+            const metric = currentMetric;
+            const originalMetric = metricInfo[metric].original;
+            
+            const currentValues = filteredData.map(d => d[metric]);
+            const originalValues = filteredData.map(d => d[originalMetric]);
+            
+            const maxCurrent = Math.max(...currentValues);
+            const minCurrent = Math.min(...currentValues);
+            const differences = currentValues.map((val, i) => val - originalValues[i]);
+            const avgDifference = differences.reduce((sum, val) => sum + val, 0) / differences.length;
+
+            document.getElementById('selectedMetric').textContent = metricInfo[metric].name;
+            document.getElementById('metricUnit').textContent = metricInfo[metric].unit;
+            document.getElementById('maxValue').textContent = maxCurrent.toFixed(4);
+            document.getElementById('minValue').textContent = minCurrent.toFixed(4);
+            document.getElementById('avgDiff').textContent = avgDifference.toFixed(4);
+        }
+
+        // Update data table
+        function updateDataTable() {
+            const filteredData = getFilteredData();
+            if (!filteredData.length) return;
+
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+
+            if (currentMetric === 'view_all') {
+                // For "View All" mode, show simplified table
+                filteredData.forEach(wear => {
+                    const row = document.createElement('tr');
+                    let metricsHtml = '';
+                    
+                    Object.keys(metricInfo).forEach(metric => {
+                        if (metric === 'wear_depth') return;
+                        const originalMetric = metricInfo[metric].original;
+                        const currentValue = wear[metric];
+                        const originalValue = wear[originalMetric];
+                        const difference = currentValue - originalValue;
+                        
+                        metricsHtml += `
+                            <div class="mb-2">
+                                <div class="font-medium">${metricInfo[metric].name}:</div>
+                                <div class="text-sm">
+                                    <span>Original: ${originalValue.toFixed(4)} ${metricInfo[metric].unit}</span><br>
+                                    <span>Current: ${currentValue.toFixed(4)} ${metricInfo[metric].unit}</span><br>
+                                    <span class="${difference >= 0 ? 'text-red-600' : 'text-green-600'}">
+                                        Diff: ${difference >= 0 ? '+' : ''}${difference.toFixed(4)} ${metricInfo[metric].unit}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${wear.km_marker}</td>
+                        <td class="px-6 py-4" colspan="3">${metricsHtml}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                return;
+            }
+
+            const metric = currentMetric;
+            const originalMetric = metricInfo[metric].original;
+
+            filteredData.forEach(wear => {
+                const originalValue = wear[originalMetric];
+                const currentValue = wear[metric];
+                const difference = currentValue - originalValue;
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${item.location}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${item.distance_km.toFixed(1)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${item[metric].toFixed(3)} ${units[metric]}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${wear.km_marker}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${originalValue.toFixed(4)} ${metricInfo[metric].unit}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${currentValue.toFixed(4)} ${metricInfo[metric].unit}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${difference >= 0 ? 'text-red-600' : 'text-green-600'}">
+                        ${difference >= 0 ? '+' : ''}${difference.toFixed(4)} ${metricInfo[metric].unit}
+                    </td>
                 `;
                 tableBody.appendChild(row);
             });
         }
-        
-        tableSection.classList.remove('hidden');
-    } else {
-        tableSection.classList.add('hidden');
-    }
-}
 
-// Load available simulations
-async function loadSimulations() {
-    try {
-        const response = await fetch('/get_simulations');
-        const data = await response.json();
-        
-        simulationsList = data.simulations;
-        const select = document.getElementById('simulation-select');
-        
-        // Store current value to restore after refresh
-        const currentValue = select.value;
-        
-        select.innerHTML = '<option value="">Select a simulation...</option>';
-        simulationsList.forEach(sim => {
-            const option = document.createElement('option');
-            option.value = sim.id;
-            option.textContent = `Sim ${sim.id}: ${sim.train_id} (${sim.start_point} → ${sim.end_point})`;
-            select.appendChild(option);
-        });
-        
-        // Restore selection if still available
-        if (currentValue && simulationsList.some(s => s.id == currentValue)) {
-            select.value = currentValue;
+        // Toggle data table visibility
+        function toggleDataTable() {
+            const table = document.getElementById('dataTable');
+            const button = document.getElementById('toggleTableBtn');
+            
+            if (table.classList.contains('hidden')) {
+                table.classList.remove('hidden');
+                button.innerHTML = '<i class="fas fa-chevron-up mr-1"></i> Hide';
+            } else {
+                table.classList.add('hidden');
+                button.innerHTML = '<i class="fas fa-chevron-down mr-1"></i> Show';
+            }
         }
-        
-        return true;
-    } catch (error) {
-        console.error('Error loading simulations:', error);
-        return false;
-    }
-}
 
-// Load data for selected simulation
-async function loadSimulationData() {
-    const simId = document.getElementById('simulation-select').value;
-    if (!simId) {
-        document.getElementById('simulation-info').classList.add('hidden');
-        return;
-    }
-    
-    currentSimulationId = simId;
-    
-    try {
-        const response = await fetch(`/fetch_data?simulation_id=${simId}`);
-        const data = await response.json();
-        
-        currentSimulationData = data.simulation;
-        currentWearData = data.wear_outputs;
-        
-        // Update simulation info
-        document.getElementById('simulation-info').classList.remove('hidden');
-        document.getElementById('total-distance').textContent = `${currentSimulationData.total_distance.toFixed(1)} km`;
-        document.getElementById('train-model').textContent = currentSimulationData.train_id;
-        document.getElementById('simulation-date').textContent = new Date(currentSimulationData.simulation_date).toLocaleDateString();
-        document.getElementById('speed-gain').textContent = currentSimulationData.speed_gain;
-        document.getElementById('weight-gain').textContent = currentSimulationData.weight_gain;
-        document.getElementById('frequency-gain').textContent = currentSimulationData.frequency_gain;
-        
-        // Update chart
-        updateChart();
-        
-        // Store this as the last viewed simulation
-        sessionStorage.setItem('lastSimulationId', simId);
-        
-    } catch (error) {
-        console.error('Error loading simulation data:', error);
-    }
-}
+        // Export data as CSV
+        function exportData() {
+            const filteredData = getFilteredData();
+            if (!filteredData.length) {
+                alert('No data to export');
+                return;
+            }
 
-// Export data as CSV
-function exportData() {
-    if (!currentWearData.length) {
-        alert('No data to export');
-        return;
-    }
-    
-    const headers = Object.keys(currentWearData[0]).join(',');
-    const rows = currentWearData.map(item => Object.values(item).join(',')).join('\n');
-    const csv = `${headers}\n${rows}`;
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `simulation_${currentSimulationData.id}_data.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
+            if (currentMetric === 'view_all') {
+                // For "View All" mode, export all metrics
+                let csv = 'KM Marker,';
+                
+                // Add headers for all metrics
+                Object.keys(metricInfo).forEach(metric => {
+                    if (metric === 'wear_depth') return;
+                    csv += `${metricInfo[metric].name} (Original),${metricInfo[metric].name} (Current),${metricInfo[metric].name} (Difference),`;
+                });
+                csv = csv.slice(0, -1) + '\n';
+                
+                // Add data rows
+                filteredData.forEach(wear => {
+                    csv += `${wear.km_marker},`;
+                    Object.keys(metricInfo).forEach(metric => {
+                        if (metric === 'wear_depth') return;
+                        const originalMetric = metricInfo[metric].original;
+                        const originalValue = wear[originalMetric];
+                        const currentValue = wear[metric];
+                        const difference = currentValue - originalValue;
+                        csv += `${originalValue.toFixed(4)},${currentValue.toFixed(4)},${difference.toFixed(4)},`;
+                    });
+                    csv = csv.slice(0, -1) + '\n';
+                });
+                
+                downloadCSV(csv, `all_metrics_simulation_${currentData.simulation.id}.csv`);
+                return;
+            }
 
-// Toggle sidebar
-function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content');
-    
-    sidebar.classList.toggle('sidebar-collapsed');
-    mainContent.classList.toggle('main-content-expanded');
-    
-    // Update nav items
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.toggle('justify-center');
-    });
-    
-    // Update nav text visibility
-    document.querySelectorAll('.nav-text').forEach(text => {
-        text.classList.toggle('hidden');
-    });
-}
+            const metric = currentMetric;
+            const originalMetric = metricInfo[metric].original;
+            
+            let csv = 'KM Marker,Original Value,Current Value,Difference\n';
+            
+            filteredData.forEach(wear => {
+                const originalValue = wear[originalMetric];
+                const currentValue = wear[metric];
+                const difference = currentValue - originalValue;
+                
+                csv += `${wear.km_marker},${originalValue.toFixed(4)},${currentValue.toFixed(4)},${difference.toFixed(4)}\n`;
+            });
+
+            downloadCSV(csv, `${metric}_simulation_${currentData.simulation.id}.csv`);
+        }
+
+        // Helper function to download CSV
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Export chart as image
+        function exportChart() {
+            if (!wearChart) {
+                alert('No chart to export');
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.download = `wear_chart_${currentMetric}_simulation_${currentData.simulation.id}.png`;
+            link.href = wearChart.toBase64Image();
+            link.click();
+        }
+
+        // Show/hide loading indicator
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').style.display = show ? 'flex' : 'none';
+        }
     </script>
 </body>
 </html>

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RailTrack Pro - Wear Outputs</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+            width: 250px;
+        }
+        .sidebar-collapsed {
+            width: 80px;
+        }
+        .main-content {
+            transition: all 0.3s ease;
+            margin-left: 250px;
+        }
+        .main-content-expanded {
+            margin-left: 80px;
+        }
+        .nav-item.active {
+            background-color: #1e40af;
+            border-left: 4px solid #93c5fd;
+        }
+        .wear-positive {
+            background-color: #fef2f2;
+            color: #dc2626;
+        }
+        .wear-negative {
+            background-color: #f0fdf4;
+            color: #16a34a;
+        }
+        .wear-neutral {
+            background-color: #eff6ff;
+            color: #2563eb;
+        }
+        .chart-container {
+            position: relative;
+            min-height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar bg-gray-900 text-gray-100 h-screen fixed shadow-lg">
+        <div class="p-5 flex items-center justify-between border-b border-gray-700">
+            <div class="flex items-center">
+                <i class="fas fa-train text-blue-400 text-2xl mr-3"></i>
+                <h1 class="text-xl font-bold">JustRail</h1>
+            </div>
+            <button id="toggleSidebar" class="text-gray-400 hover:text-white">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <nav class="mt-6">
+            <div class="px-4">
+                <p class="text-gray-400 uppercase text-xs font-semibold mb-3">Main</p>
+                <a href="/" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-cogs mr-3"></i>
+                    <span class="nav-text">Simulation</span>
+                </a>
+                <a href="/analytics" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-chart-line mr-3"></i>
+                    <span class="nav-text">Analytics</span>
+                </a>
+                <a href="/visualization" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-project-diagram mr-3"></i>
+                    <span class="nav-text">Visualization</span>
+                </a>
+            </div>
+
+            <div class="px-4 mt-6">
+                <p class="text-gray-400 uppercase text-xs font-semibold mb-3">Tools</p>
+                <a href="/maintenance" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-tools mr-3"></i>
+                    <span class="nav-text">Maintenance</span>
+                </a>
+                <a href="/reports" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-file-alt mr-3"></i>
+                    <span class="nav-text">Reports</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="absolute bottom-0 w-full p-4 border-t border-gray-700">
+            <div class="flex items-center">
+                <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                    <span class="text-white font-bold">J</span>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium">Justice</p>
+                    <p class="text-xs text-gray-400">Administrator</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content min-h-screen">
+        <header class="bg-white shadow-sm">
+            <div class="flex justify-between items-center py-4 px-6">
+                <h2 class="text-xl font-semibold text-gray-800">Wear Output Analysis</h2>
+                <div class="flex items-center space-x-4">
+                    <button onclick="window.history.back()" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">
+                        <i class="fas fa-arrow-left mr-1"></i> Back
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="p-6">
+            <!-- Simulation Summary -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Simulation Details</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Train</p>
+                        <p class="font-medium">{{ simulation.train_name }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Route</p>
+                        <p class="font-medium">{{ simulation.route_name }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Distance</p>
+                        <p class="font-medium">{{ simulation.distance }} km</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Speed</p>
+                        <p class="font-medium">{{ simulation.speed }} km/h</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Weight</p>
+                        <p class="font-medium">{{ simulation.weight }} kg</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Date</p>
+                        <p class="font-medium">{{ simulation.created_at }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wear Output Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Corrugation Wear -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h4 class="text-md font-semibold text-gray-800 mb-3">Corrugation Wear</h4>
+                    <div class="chart-container">
+                        <canvas id="corrugationChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Side Wear -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h4 class="text-md font-semibold text-gray-800 mb-3">Side Wear</h4>
+                    <div class="chart-container">
+                        <canvas id="sideWearChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Wear Data -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Detailed Wear Measurements</h3>
+                    <div class="flex items-center space-x-2">
+                        <button id="exportBtn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm">
+                            <i class="fas fa-file-export mr-1"></i> Export CSV
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KM Marker</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Left Corrugation</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Right Corrugation</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Left Side Wear</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Right Side Wear</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Left Life Remaining</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Right Life Remaining</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gauge Diff</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for wear in wear_outputs %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {{ wear.km_marker }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm wear-positive">
+                                    {{ "%.4f"|format(wear.crw_l) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm wear-positive">
+                                    {{ "%.4f"|format(wear.crw_r) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm wear-positive">
+                                    {{ "%.4f"|format(wear.side_l) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm wear-positive">
+                                    {{ "%.4f"|format(wear.side_r) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm wear-negative">
+                                    {{ "%.2f"|format(wear.remlife_l) }}%
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm wear-negative">
+                                    {{ "%.2f"|format(wear.remlife_r) }}%
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm wear-neutral">
+                                    {{ "%.4f"|format(wear.gaugediff) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // Sidebar toggle functionality
+        document.getElementById('toggleSidebar').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('sidebar-collapsed');
+            mainContent.classList.toggle('main-content-expanded');
+            
+            const navTexts = document.querySelectorAll('.nav-text');
+            navTexts.forEach(text => {
+                text.classList.toggle('hidden');
+            });
+        });
+
+        // Export button functionality
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            // Convert data to CSV
+            let csv = 'KM Marker,Left Corrugation,Right Corrugation,Left Side Wear,Right Side Wear,Left Life Remaining,Right Life Remaining,Gauge Diff\n';
+            
+            {% for wear in wear_outputs %}
+            csv += `{{ wear.km_marker }},{{ "%.4f"|format(wear.crw_l) }},{{ "%.4f"|format(wear.crw_r) }},{{ "%.4f"|format(wear.side_l) }},{{ "%.4f"|format(wear.side_r) }},{{ "%.2f"|format(wear.remlife_l) }},{{ "%.2f"|format(wear.remlife_r) }},{{ "%.4f"|format(wear.gaugediff) }}\n`;
+            {% endfor %}
+            
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'wear_outputs_simulation_{{ simulation.id }}.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        // Initialize charts when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Prepare data for charts
+            const kmMarkers = [];
+            const crwLeft = [];
+            const crwRight = [];
+            const sideLeft = [];
+            const sideRight = [];
+            const lifeLeft = [];
+            const lifeRight = [];
+            
+            {% for wear in wear_outputs %}
+            kmMarkers.push(Number({{ wear.km_marker }}));
+            crwLeft.push(Number({{ wear.crw_l }}));
+            crwRight.push(Number({{ wear.crw_r }}));
+            sideLeft.push(Number({{ wear.side_l }}));
+            sideRight.push(Number({{ wear.side_r }}));
+            lifeLeft.push(Number({{ wear.remlife_l }}));
+            lifeRight.push(Number({{ wear.remlife_r }}));
+            {% endfor %}
+
+            // Get canvas contexts
+            const corrugationCtx = document.getElementById('corrugationChart');
+            const sideWearCtx = document.getElementById('sideWearChart');
+
+            // Destroy existing charts if they exist
+            if (window.corrugationChart) {
+                window.corrugationChart.destroy();
+            }
+            if (window.sideWearChart) {
+                window.sideWearChart.destroy();
+            }
+
+            // Corrugation Wear Chart
+            window.corrugationChart = new Chart(
+                corrugationCtx,
+                {
+                    type: 'line',
+                    data: {
+                        labels: kmMarkers,
+                        datasets: [
+                            {
+                                label: 'Left Rail Corrugation',
+                                data: crwLeft,
+                                borderColor: 'rgb(239, 68, 68)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                fill: true
+                            },
+                            {
+                                label: 'Right Rail Corrugation',
+                                data: crwRight,
+                                borderColor: 'rgb(99, 102, 241)',
+                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Corrugation Wear Along Track',
+                                font: {
+                                    size: 16
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.y.toFixed(4);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'KM Marker'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Wear Amount'
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                }
+            );
+
+            // Side Wear Chart
+            window.sideWearChart = new Chart(
+                sideWearCtx,
+                {
+                    type: 'line',
+                    data: {
+                        labels: kmMarkers,
+                        datasets: [
+                            {
+                                label: 'Left Rail Side Wear',
+                                data: sideLeft,
+                                borderColor: 'rgb(234, 88, 12)',
+                                backgroundColor: 'rgba(234, 88, 12, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Right Rail Side Wear',
+                                data: sideRight,
+                                borderColor: 'rgb(22, 163, 74)',
+                                backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Left Rail Life Remaining',
+                                data: lifeLeft,
+                                borderColor: 'rgb(6, 182, 212)',
+                                backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                borderDash: [5, 5],
+                                fill: false,
+                                yAxisID: 'y1'
+                            },
+                            {
+                                label: 'Right Rail Life Remaining',
+                                data: lifeRight,
+                                borderColor: 'rgb(124, 58, 237)',
+                                backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.1,
+                                borderDash: [5, 5],
+                                fill: false,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Side Wear and Remaining Life',
+                                font: {
+                                    size: 16
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.datasetIndex < 2) {
+                                            label += context.parsed.y.toFixed(4);
+                                        } else {
+                                            label += context.parsed.y.toFixed(2) + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'KM Marker'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Wear Amount'
+                                },
+                                beginAtZero: true
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Life Remaining (%)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                },
+                                min: Math.min(...lifeLeft.concat(lifeRight)) - 5,
+                                max: Math.max(...lifeLeft.concat(lifeRight)) + 5
+                            }
+                        }
+                    }
+                }
+            );
+        });
+    </script>
+</body>
+</html>

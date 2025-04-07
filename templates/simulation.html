@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RailTrack Pro - Simulation Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Date Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+            width: 250px;
+        }
+        .sidebar-collapsed {
+            width: 80px;
+        }
+        .main-content {
+            transition: all 0.3s ease;
+            margin-left: 250px;
+        }
+        .main-content-expanded {
+            margin-left: 80px;
+        }
+        .nav-item.active {
+            background-color: #1e40af;
+            border-left: 4px solid #93c5fd;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .train-card {
+            transition: all 0.3s ease;
+        }
+        .train-card:hover {
+            transform: scale(1.02);
+        }
+        .train-card.selected {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar bg-gray-900 text-gray-100 h-screen fixed shadow-lg">
+        <div class="p-5 flex items-center justify-between border-b border-gray-700">
+            <div class="flex items-center">
+                <i class="fas fa-train text-blue-400 text-2xl mr-3"></i>
+                <h1 class="text-xl font-bold">RailTrack Pro</h1>
+            </div>
+            <button id="toggleSidebar" class="text-gray-400 hover:text-white">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <nav class="mt-6">
+            <div class="px-4">
+                <p class="text-gray-400 uppercase text-xs font-semibold mb-3">Main</p>
+                <a href="/" class="nav-item active flex items-center py-3 px-4 text-white hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-cogs mr-3"></i>
+                    <span class="nav-text">Simulation</span>
+                </a>
+                <a href="/analytics" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-chart-line mr-3"></i>
+                    <span class="nav-text">Analytics</span>
+                </a>
+                <a href="/visualization" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-project-diagram mr-3"></i>
+                    <span class="nav-text">Visualization</span>
+                </a>
+            </div>
+
+            <div class="px-4 mt-6">
+                <p class="text-gray-400 uppercase text-xs font-semibold mb-3">Tools</p>
+                <a href="/maintenance" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-tools mr-3"></i>
+                    <span class="nav-text">Maintenance</span>
+                </a>
+                <a href="/reports" class="nav-item flex items-center py-3 px-4 text-gray-300 hover:bg-gray-800 rounded transition">
+                    <i class="fas fa-file-alt mr-3"></i>
+                    <span class="nav-text">Reports</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="absolute bottom-0 w-full p-4 border-t border-gray-700">
+            <div class="flex items-center">
+                <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                    <span class="text-white font-bold">J</span>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium">Justice</p>
+                    <p class="text-xs text-gray-400">Administrator</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content min-h-screen">
+        <header class="bg-white shadow-sm">
+            <div class="flex justify-between items-center py-4 px-6">
+                <h2 class="text-xl font-semibold text-gray-800">Simulation Dashboard</h2>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <input type="text" id="datePicker" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5" placeholder="Select date">
+                    </div>
+                    <button class="p-2 rounded-full hover:bg-gray-100">
+                        <i class="fas fa-bell text-gray-500"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="p-6">
+            <!-- Simulation Configuration -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Simulation Configuration</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Train Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Select Train</label>
+                        <select id="trainSelect" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Select a train --</option>
+                            {% for train in trains %}
+                            <option value="{{ train.id }}">{{ train.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Route Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Route</label>
+                        <select id="routeSelect" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                            <option value="">-- Select a train first --</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Speed Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Speed (km/h)</label>
+                        <div class="flex">
+                            <input type="number" id="speedInput" class="flex-1 border border-gray-300 rounded-l-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter speed" readonly>
+                            <button id="randomSpeedBtn" class="bg-gray-200 hover:bg-gray-300 px-3 rounded-r-md">
+                                <i class="fas fa-random"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Based on train's average speed</p>
+                    </div>
+                    
+                    <!-- Weight Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                        <div class="flex">
+                            <input type="number" id="weightInput" class="flex-1 border border-gray-300 rounded-l-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter weight" readonly>
+                            <button id="randomWeightBtn" class="bg-gray-200 hover:bg-gray-300 px-3 rounded-r-md">
+                                <i class="fas fa-random"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Based on train's total weight</p>
+                    </div>
+                    
+                    <!-- Frequency Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Frequency (Hz)</label>
+                        <div class="flex">
+                            <input type="number" step="0.01" id="frequencyInput" class="flex-1 border border-gray-300 rounded-l-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter frequency" readonly>
+                            <button id="randomFrequencyBtn" class="bg-gray-200 hover:bg-gray-300 px-3 rounded-r-md">
+                                <i class="fas fa-random"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Calculated from axle count and daily runs</p>
+                    </div>
+                    
+                    <!-- Start Station -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Start Station</label>
+                        <select id="startStationSelect" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                            <option value="">-- Select a route first --</option>
+                        </select>
+                    </div>
+                    
+                    <!-- End Station -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">End Station</label>
+                        <select id="endStationSelect" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                            <option value="">-- Select a route first --</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Distance Display -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Distance (km)</label>
+                        <input type="text" id="distanceDisplay" class="w-full border border-gray-300 rounded-md py-2 px-3 bg-gray-100" readonly>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="calculateBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                        <i class="fas fa-calculator mr-2"></i> Calculate
+                    </button>
+                    <button id="resetBtn" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md">
+                        <i class="fas fa-undo mr-2"></i> Reset
+                    </button>
+                    <button id="runSimulationBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md">
+                        <i class="fas fa-play mr-2"></i> Run Simulation
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Recent Simulations -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Recent Simulations</h3>
+                    <button class="text-blue-600 hover:text-blue-800 font-medium">
+                        View All
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Train</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distance</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentSimulations" class="bg-white divide-y divide-gray-200">
+                            {% for sim in recent_simulations %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ sim.created_at }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ sim.train_name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ sim.route_name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ sim.distance }} km
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ 'bg-green-100 text-green-800' if sim.status == 'successful' else 'bg-red-100 text-red-800' }}">
+                                        {{ sim.status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <a href="/get_wear_outputs/{{ sim.id }}" class="text-blue-600 hover:text-blue-900">
+                                        View Wear
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        // Initialize date picker
+        flatpickr("#datePicker", {
+            dateFormat: "Y-m-d",
+            defaultDate: "today"
+        });
+
+        // Sidebar toggle functionality
+        document.getElementById('toggleSidebar').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('sidebar-collapsed');
+            mainContent.classList.toggle('main-content-expanded');
+            
+            const navTexts = document.querySelectorAll('.nav-text');
+            navTexts.forEach(text => {
+                text.classList.toggle('hidden');
+            });
+        });
+
+        // Active nav item highlighting
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item').forEach(nav => {
+                    nav.classList.remove('active');
+                    nav.classList.add('text-gray-300');
+                });
+                this.classList.add('active');
+                this.classList.remove('text-gray-300');
+            });
+        });
+
+        // Main application logic
+        document.addEventListener('DOMContentLoaded', function() {
+            // Train selection change
+            document.getElementById('trainSelect').addEventListener('change', function() {
+                const trainId = this.value;
+                if (!trainId) return;
+
+                fetch(`/get_route_data/${trainId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(data.error);
+                            return;
+                        }
+
+                        // Populate route dropdown
+                        const routeSelect = document.getElementById('routeSelect');
+                        routeSelect.innerHTML = `<option value="${data.route.id}">${data.route.name}</option>`;
+                        routeSelect.disabled = false;
+
+                        // Populate station dropdowns
+                        const startStationSelect = document.getElementById('startStationSelect');
+                        const endStationSelect = document.getElementById('endStationSelect');
+                        
+                        startStationSelect.innerHTML = data.stations.map(station => 
+                            `<option value="${station.id}">${station.name} (${station.km_marker} km)</option>`
+                        ).join('');
+                        startStationSelect.disabled = false;
+                        
+                        endStationSelect.innerHTML = data.stations.map(station => 
+                            `<option value="${station.id}">${station.name} (${station.km_marker} km)</option>`
+                        ).join('');
+                        endStationSelect.disabled = false;
+                        endStationSelect.value = data.stations[data.stations.length - 1].id;
+
+                        // Set default values based on train
+                        document.getElementById('speedInput').value = data.train.avg_speed;
+                        document.getElementById('weightInput').value = data.train.total_weight;
+                        
+                        // Calculate frequency based on train parameters
+                        const frequency = (data.train.axle_count * data.train.daily_runs) / 1000;
+                        document.getElementById('frequencyInput').value = frequency.toFixed(2);
+                    })
+                    .catch(error => console.error('Error:', error));
+            });
+
+            // Randomize buttons
+            document.getElementById('randomSpeedBtn').addEventListener('click', function() {
+                const speedInput = document.getElementById('speedInput');
+                const trainSelect = document.getElementById('trainSelect');
+                
+                if (trainSelect.value) {
+                    const avgSpeed = parseFloat(speedInput.value);
+                    const randomSpeed = (avgSpeed * (0.8 + Math.random() * 0.4)).toFixed(1);
+                    speedInput.value = randomSpeed;
+                } else {
+                    speedInput.value = Math.floor(Math.random() * 120) + 30;
+                }
+            });
+
+            document.getElementById('randomWeightBtn').addEventListener('click', function() {
+                const weightInput = document.getElementById('weightInput');
+                const trainSelect = document.getElementById('trainSelect');
+                
+                if (trainSelect.value) {
+                    const totalWeight = parseFloat(weightInput.value);
+                    const randomWeight = (totalWeight * (0.9 + Math.random() * 0.2)).toFixed(0);
+                    weightInput.value = randomWeight;
+                } else {
+                    weightInput.value = Math.floor(Math.random() * 100000) + 50000;
+                }
+            });
+
+            document.getElementById('randomFrequencyBtn').addEventListener('click', function() {
+                const frequencyInput = document.getElementById('frequencyInput');
+                const currentValue = parseFloat(frequencyInput.value) || 10;
+                frequencyInput.value = (currentValue * (0.8 + Math.random() * 0.4)).toFixed(2);
+            });
+
+            // Calculate button
+            document.getElementById('calculateBtn').addEventListener('click', function() {
+                const startStation = document.getElementById('startStationSelect');
+                const endStation = document.getElementById('endStationSelect');
+                
+                if (startStation.value && endStation.value) {
+                    const startKm = parseFloat(startStation.selectedOptions[0].text.match(/\(([\d.]+) km\)/)[1]);
+                    const endKm = parseFloat(endStation.selectedOptions[0].text.match(/\(([\d.]+) km\)/)[1]);
+                    const distance = Math.abs(endKm - startKm);
+                    document.getElementById('distanceDisplay').value = distance.toFixed(2) + ' km';
+                }
+            });
+
+            // Run Simulation button
+            document.getElementById('runSimulationBtn').addEventListener('click', function() {
+                const formData = new FormData();
+                formData.append('train_id', document.getElementById('trainSelect').value);
+                formData.append('route_id', document.getElementById('routeSelect').value);
+                formData.append('start_station_id', document.getElementById('startStationSelect').value);
+                formData.append('end_station_id', document.getElementById('endStationSelect').value);
+                formData.append('speed', document.getElementById('speedInput').value);
+                formData.append('weight', document.getElementById('weightInput').value);
+                formData.append('frequency', document.getElementById('frequencyInput').value);
+
+                fetch('/run_simulation', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+
+            // Reset button
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                document.getElementById('trainSelect').value = '';
+                document.getElementById('routeSelect').value = '';
+                document.getElementById('routeSelect').disabled = true;
+                document.getElementById('startStationSelect').value = '';
+                document.getElementById('startStationSelect').disabled = true;
+                document.getElementById('endStationSelect').value = '';
+                document.getElementById('endStationSelect').disabled = true;
+                document.getElementById('speedInput').value = '';
+                document.getElementById('weightInput').value = '';
+                document.getElementById('frequencyInput').value = '';
+                document.getElementById('distanceDisplay').value = '';
+            });
+        });
+    </script>
+</body>
+</html>
